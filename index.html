@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Dashboard Covid-19 di D.I. Yogyakarta</title>
+	<meta charset="utf-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.1/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet@1.0.1/dist/leaflet.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js" integrity="sha512-Abr21JO2YqcJ03XGZRPuZSWKBhJpUAR6+2wH5zBeO4wAw4oksr8PRdF+BKIRsxvCdq+Mv4670rZ+dLnIyabbGw==" crossorigin="anonymous"></script>
+	
+	<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+	<script type="text/javascript" src="https://www.chartjs.org/samples/latest/utils.js"> </script>
+	<script src="https://www.chartjs.org/dist/2.9.3/Chart.min.js"></script>
+	
+	
+	<style>
+
+		#top {
+			width: 100%;
+			height: 40px;
+			float:top;
+		}
+
+		#map {
+			width: 50%;
+			height: 550px;
+			float:left;
+		}
+
+		#chartDiv {
+			width: 50%;
+			height: 500px;
+			float:left;
+		}
+
+
+		p,ol {
+			font: 12px/14px Arial, Helvetica, sans-serif;	
+			
+		}
+
+		.info {
+			padding: 16px 10px;
+			font: 14px/16px Arial, Helvetica, sans-serif;
+			background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: 'white';
+		}
+
+		.legend {
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+		}
+		.legend i {
+			width: 18px;
+			height: 18px;
+			float: left;
+			margin-right: 8px;
+			opacity: 0.7;
+		}
+
+
+	</style>
+</head>
+<body>
+	<div id="top">
+		<p align="center"><b>Dashboard Covid-19 D.I. Yogyakarta (leaflet.js dan chart.js) </b></p>
+	</div>
+	<div id="map"></div>
+	
+	<div id="chartDiv">
+		<canvas id="barChartCanvas" height="130"></canvas>
+		<canvas id="ScatterCanvas" height="130"></canvas>
+	</div>
+	
+	
+	<script type="text/javascript">
+    
+	var scatterData = [];
+	var scatterLabels = [];
+	var color = Chart.helpers.color;
+	
+	//bar chart that updates when the map is interacted with
+    var newChart = function(labels, data) {
+        var dataLength = labels ? labels.length : 0;
+        //console.log
+        //console.log('we\'re in newChart', labels, data);
+        //will select colors to use based on the number of data points
+		var backgroundColors = ['rgba(255,255,153, 0.9)', //positif
+                                'rgba(127,201,127, 0.9)',  //sembuh
+                                'rgba(228,26,28, 0.9)'	//meninggal
+                               ];
+        var colors = [];
+        for (var i = 0; i < dataLength; i++) {
+            colors.push(backgroundColors[i]);
+        };
+        //console.log('newChart colors', colors);
+        var ctx = document.getElementById("barChartCanvas");
+        var barChartCanvas = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Info',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true
+                            }
+                        }]
+                    }
+                }
+            });
+    };// var newChart = function(labels, data) {
+
+
+	//scatter plot chart
+	var scatterChartData = {
+			labels: scatterLabels,
+			datasets: [{
+				label: 'Kasus Positif (X-axis) vs. Sembuh (Y-axis)',
+				borderColor: window.chartColors.red,
+				backgroundColor: color(window.chartColors.red).alpha(0.2).rgbString(),
+				data: scatterData
+			}]
+		};
+	
+	//will draw the scatter plot
+	window.onload = function() {
+	
+		//intialize the bar chart with nothing
+		newChart([], []);
+
+		var ctxScatter = document.getElementById('ScatterCanvas').getContext('2d');
+		//console.log(scatterChartData);
+		
+		myScatter = Chart.Scatter(ctxScatter, {
+			data: scatterChartData,
+			options: {
+				title: {
+					display: true,
+					text: 'Scatterplot: Gerakkan tetikus untuk melihat data'
+					},
+				
+				 tooltips: {
+				  callbacks: {
+					title: function(tooltipItem, data) {
+						//will get the name of ths state
+						return data['labels'][tooltipItem[0]['index']];
+					},
+					label: function(tooltipItem, data) {
+						//will get the values 
+						label_string = "Kasus positif: " + tooltipItem.xLabel + " Sembuh: " + tooltipItem.yLabel;
+						
+						return  label_string;
+					}
+				},//callbacks: {
+				  backgroundColor: '#FFF',
+				  titleFontSize: 14,
+				  titleFontColor: '#0066ff',
+				  bodyFontColor: '#000',
+				  bodyFontSize: 12,
+				  displayColors: false
+			}//tooltips: {
+				
+				
+		}	//options: {
+				
+	});//window.myScatter = Chart.Scatter(ctxScatter, {
+	
+	myScatter.update();
+		
+	};//window.onload = function() {
+
+
+		//create the leaflet.js map, centered on D.I. Yogyakarta
+		var map = L.map('map').setView([-7.803164,110.3398252],10, zoomSnap = 0.1, zoomDelta = 0.1);
+		
+		<!-- basemap -->
+	var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+	}).addTo(map);
+	
+	var osm = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+		}).addTo(map);
+		
+	var gmap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+	}).addTo(map);
+	
+	
+	var a = L.marker([-7.783348,110.377848]).addTo(map).bindPopup('RS Bethesda <br> kamar isolasi = tidak ada informasi'),
+		b = L.marker([-7.766212,110.471824]).addTo(map).bindPopup('RS Bhayangkara <br> kamar isolasi = Ada'),
+		c = L.marker([-7.785701,110.376832]).addTo(map).bindPopup('RS DKT Dr Soetarto <br> kamar isolasi = tidak ada informasi'),
+		d = L.marker([-7.770254,110.432773]).addTo(map).bindPopup('RS Hermina <br> kamar isolasi = tidak ada informasi'),
+		e = L.marker([-7.757717,110.403382]).addTo(map).bindPopup('RS JIH <br> kamar isolasi = Ada'),
+		f = L.marker([-7.955782,110.658437]).addTo(map).bindPopup('RS Panti Rahayu <br> kamar isolasi = 5 kamar'),
+		g = L.marker([-7.777166,110.377562]).addTo(map).bindPopup('RS Panti Rapih <br> kamar isolasi = 5 kamar'),
+		h = L.marker([-7.771907,110.466638]).addTo(map).bindPopup('RS Panti Rini <br> kamar isolasi = Ada'),
+		i = L.marker([-7.886856,110.330166]).addTo(map).bindPopup('RS RS PKU Muhammadiyah Bantul <br> kamar isolasi = tidak ada informasi'),
+		j = L.marker([-7.800458,110.317688]).addTo(map).bindPopup('RS RS PKU Muhammadiyah Gamping <br> kamar isolasi = Ada'),
+		k = L.marker([-7.801288,110.362271]).addTo(map).bindPopup('RS RS PKU Muhammadiyah Yogyakarta <br> kamar isolasi = 3 kamar'),
+		l = L.marker([-7.815718,110.373932]).addTo(map).bindPopup('RS Pratama <br> kamar isolasi = tidak ada informasi'),
+		m = L.marker([-7.767484,110.368212]).addTo(map).bindPopup('RS Sakina Idaman <br> kamar isolasi = Ada'),
+		n = L.marker([-7.925683,110.318711]).addTo(map).bindPopup('RS Santa Elizabeth <br> kamar isolasi = tidak ada informasi'),
+		o = L.marker([-7.783559,110.390901]).addTo(map).bindPopup('RS Siloam <br> kamar isolasi = tidak ada informasi'),
+		p = L.marker([-7.742942,110.350361]).addTo(map).bindPopup('RSA UGM <br> kamar isolasi = 107 kamar'),
+		q = L.marker([-7.797489,110.410199]).addTo(map).bindPopup('RSPAU Dr Harjdolukito <br> kamar isolasi = 2 kamar'),
+		r = L.marker([-7.768734,110.3735]).addTo(map).bindPopup('RSUD Dr Sardjito <br> Positif dirawat = 49 pasien <br> Positif sembuh = 30 pasien <br> pasien meninggal = 8 pasien <br> kamar isolasi = 32 kamar'),
+		s = L.marker([-7.825966,110.378012]).addTo(map).bindPopup('RSUD Kota Yogyakarta <br> kamar isolasi = 10 kamar'),
+		t = L.marker([-7.821112,110.22566]).addTo(map).bindPopup('RSUD Nyi Ageng Serang <br> kamar isolasi = tidak ada informasi'),
+		u = L.marker([-7.892828,110.483168]).addTo(map).bindPopup('RSUD Panembahan Senopati <br> kamar isolasi = 1 kamar'),
+		v = L.marker([-7.804727,110.483168]).addTo(map).bindPopup('RSUD Prambanan <br> kamar isolasi = Ada'),
+		w = L.marker([-7.687075,110.341731]).addTo(map).bindPopup('RSUD Sleman <br> kamar isolasi = Ada'),
+		x = L.marker([-7.858834,110.147948]).addTo(map).bindPopup('RSUD Wates <br> kamar isolasi = 4 kamar'),
+		y = L.marker([-7.96184,110.602918]).addTo(map).bindPopup('RSUD Wonosari <br> kamar isolasi = 1 kamar')
+		.openPopup();
+	
+	
+	<!-- layer grupmagang -->
+	var RS = L.layerGroup([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y]);
+	
+	<!-- layer grup basemap -->
+	var baseMaps = {
+		"Citra Satelit": esri,
+		"Open Street Map": osm,
+		"Google Map": gmap
+	};
+
+	
+	var overlayMaps = {
+		"Rumah Sakit Rujukan": RS
+	};
+	
+	L.control.layers(baseMaps, overlayMaps).addTo(map);
+	
+	var info = L.control();
+		info.onAdd = function(map) {
+			this._div = L.DomUtil.create('div', 'info');
+			
+			this.update();
+			return this._div;
+			
+		};
+        
+		info.update = function(props) {
+            if (props) {
+				
+					var labels = ['Kasus positif', 'Sembuh', 'Meninggal'];
+                    var data = [props.data_covid_diysept2020_Dirawat, props.data_covid_diysept2020_Sembuh, props.data_covid_diysept2020_Meninggal];
+                    //console.log('labels', labels, 'data', data);
+					
+					//will add a floating DIV tage over the map
+					var overview = '<h4>Data Kecamatan: ' + props.KECAMATAN + "<br/>";
+					overview += 'Kasus positif: ' + props.data_covid_diysept2020_Dirawat + "<br/>";
+					overview += 'Sembuh: ' + props.data_covid_diysept2020_Sembuh + "<br/>";
+					overview += 'Meninggal: ' + props.data_covid_diysept2020_Meninggal + "<br/>";
+                    this._div.innerHTML = overview;
+                    //send this data to the bar chart
+					newChart(labels, data);
+					
+					
+					
+            }
+		};
+
+		info.addTo(map);
+		
+		
+		//sets the color ramp for the map shape
+		//5 class natural using colorbrewer colors
+		function getColor(b) {
+			
+			return b >= 0 & b <= 3 ? '#ffffcc' :
+                   b >= 4 & b <= 10 ? '#a1dab4':
+                   b >= 11 & b <= 20 ? '#41b6c4':
+                   b >= 21 & b <= 49 ? '#225ea8' :
+				   'grey';
+		}
+
+		function style_1(feature){
+			return{
+				weight: 1,
+				opacity: 1,
+				color: 'white',
+			};
+		}
+
+		//sets the intial look of the map using the confirmed cases
+		function style(feature) {
+			return {
+				weight: 0.6,
+				opacity: 0.4,
+				color: 'white',
+				fillOpacity: 0.8,
+				fillColor: getColor(feature.properties.data_covid_diysept2020_Dirawat)
+			};
+		}
+
+
+		function highlightFeature(e) {
+			//console.log('highlightFeature was entered');
+			var layer = e.target;
+
+			layer.setStyle({
+				weight: 1.5,
+				color: 'black',
+				dashArray: '',
+				fillOpacity: 0.7
+			});
+
+			if (!L.Browser.ie && !L.Browser.opera) {
+				layer.bringToFront();
+			}
+
+			//this is how the bar chart will be updated - 
+			//data contained in the map feature will be sent to update the bar chart
+			info.update(layer.feature.properties);
+		}
+
+		var geojson;
+
+		function resetHighlight(e) {
+			jsonTest.resetStyle(e.target);
+			//comment the line below if you don't want the data to reset when the mouse moves away
+			info.update();
+		}
+
+		function onEachFeature(feature, layer) {
+			console.log('onEachFeature was entered');
+			
+			//get all the data for adding to the scatter plot
+			if (feature.properties) {
+			//console.log(feature.properties);
+
+				//no null values
+				if (feature.properties.data_covid_diysept2020_Dirawat != null) {
+					scatterData.push  ({x: feature.properties.data_covid_diysept2020_Dirawat, y:feature.properties.data_covid_diysept2020_Sembuh} );
+					
+					//get the statename for labeling in the scatterplot
+					scatterLabels.push(feature.properties.KECAMATAN);
+					
+				} else {
+					console.log("null");
+				}
+				
+				//force the scatter plot to draw when the page loads
+				myScatter.update();
+					
+			}
+		
+			layer.on({
+				mouseover: highlightFeature,
+				mouseout: resetHighlight
+			});
+
+			
+		}
+
+		//this is where the GeoJSON created in QGIS is loaded into the map
+		function popUp(f,l){
+			console.log("called");
+			var out = [];
+			if (f.properties){
+			for(key in f.properties){
+				out.push(key+": "+f.properties[key]);
+			}
+			l.bindPopup(out.join("<br />"));
+			}
+		}
+		
+	var myStyle = {
+        "color": "#ff7800",
+        "weight": 5,
+        "opacity": 0.65
+    };
+
+		
+	var jsonTest = new L.GeoJSON.AJAX(["kasuspositif_kec_diy.geojson"],{
+		onEachFeature:onEachFeature,
+		style: myStyle
+	}).addTo(map);
+
+
+		//update this if you want different credits on the bottom of the map
+		map.attributionControl.addAttribution('COVID-19 Data D.I. Yogyakarta &copy; <a href="https://corona.jogjaprov.go.id/">Pemerintah Provinsi D.I. Yogyakarta</a>');
+
+		var legend = L.control({position: 'bottomright'});
+
+		legend.onAdd = function (map) {
+
+			var div = L.DomUtil.create('div', 'info legend'),
+				grades = [0, 3, 10, 20, 49],
+				labels = ['<strong>Kasus positif</strong>'],
+				from, to;
+			var x=1;
+            var y=1;
+			for (var i = 0; i < grades.length - 1; i++) {
+				from = grades[i];
+				to = grades[i + 1];
+                y++;
+
+				//console.log("x" + from + " " + to);
+
+				/*labels.push(
+					'<i style="background:' + getColor(x,x+1) + '"></i> ' + from + (' to ' + to)
+                    );*/
+					
+					labels.push(
+					'<i style="background:' + getColor(from) + '"></i> ' + from  + (' to ' + to)
+                    );
+					
+			}
+
+			div.innerHTML = labels.join('<br>');
+			
+			return div;
+			
+			
+		};
+
+		legend.addTo(map);
+
+	</script>
+</body>
+</html>
